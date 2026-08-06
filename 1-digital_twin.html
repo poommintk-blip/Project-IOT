@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Digital Twin — สถานีตรวจอากาศดิจิทัลทวิน</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#10151F;
+    --panel:#17202C;
+    --paper:#EFEAE0;
+    --paper-dim:#DCD5C6;
+    --rain:#3F7CAC;
+    --rain-dim:#274A63;
+    --sun:#E8A33D;
+    --sun-dim:#8C5F1F;
+    --storm:#C1502E;
+    --storm-dim:#6E2E1A;
+    --normal:#5C8A72;
+    --normal-dim:#33503E;
+    --line: rgba(239,234,224,0.14);
+    --line-strong: rgba(239,234,224,0.28);
+    --state: var(--normal);
+    --state-dim: var(--normal-dim);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'Noto Sans Thai','IBM Plex Mono',monospace;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:28px 16px 60px;
+  }
+  .rig{
+    width:100%;
+    max-width:1180px;
+  }
+  .masthead{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:14px;
+    border-bottom:1px solid var(--line-strong);
+    padding-bottom:18px;
+    margin-bottom:22px;
+  }
+  .masthead .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--paper-dim);
+    opacity:.7;
+    margin:0 0 6px;
+  }
+  .masthead h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:clamp(22px,3.2vw,32px);
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .masthead .sub{
+    font-family:'Noto Sans Thai',sans-serif;
+    font-size:13.5px;
+    color:var(--paper-dim);
+    margin-top:6px;
+    max-width:560px;
+  }
+  .conn{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .conn-dot{
+    width:9px;height:9px;border-radius:50%;
+    background:#5a5a52;
+    box-shadow:0 0 0 3px rgba(239,234,224,0.06);
+    transition:background .3s, box-shadow .3s;
+  }
+  .conn-dot.live{
+    background:var(--state);
+    box-shadow:0 0 0 4px color-mix(in srgb, var(--state) 25%, transparent);
+  }
+  .conn-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:var(--paper-dim);
+    letter-spacing:.05em;
+  }
+  button{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.04em;
+    border:1px solid var(--line-strong);
+    background:transparent;
+    color:var(--paper);
+    padding:9px 16px;
+    border-radius:3px;
+    cursor:pointer;
+    transition:border-color .2s, background .2s;
+  }
+  button:hover{border-color:var(--state); background:rgba(239,234,224,0.04);}
+  button:focus-visible{outline:2px solid var(--state); outline-offset:2px;}
+  button.primary{
+    background:var(--state);
+    border-color:var(--state);
+    color:var(--ink);
+    font-weight:600;
+  }
+  button.primary:hover{filter:brightness(1.08);}
+  button:disabled{opacity:.4; cursor:not-allowed;}
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap:20px;
+  }
+  @media (max-width:880px){ .grid{grid-template-columns:1fr;} }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:20px;
+  }
+  .card h2{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--paper-dim);
+    margin:0 0 16px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .state-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    padding:3px 9px;
+    border-radius:20px;
+    border:1px solid var(--state);
+    color:var(--state);
+    letter-spacing:.06em;
+  }
+
+  /* --- Signature dial --- */
+  .dial-wrap{
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:6px 0 8px;
+  }
+  .scene-backdrop{
+    position:absolute;
+    inset:0;
+    border-radius:6px;
+    overflow:hidden;
+    opacity:0.55;
+  }
+  canvas#scene{
+    width:100%;
+    height:100%;
+    display:block;
+  }
+  .dial{
+    position:relative;
+    z-index:2;
+    width:230px;
+    height:230px;
+    border-radius:50%;
+    background:radial-gradient(circle at 32% 28%, rgba(239,234,224,0.10), rgba(16,21,31,0.55) 70%);
+    border:1px solid var(--line-strong);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    -webkit-backdrop-filter: blur(1px);
+    backdrop-filter: blur(1px);
+  }
+  .dial .glyph{ font-size:44px; line-height:1; margin-bottom:8px; }
+  .dial .label{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:19px;
+    color:var(--state);
+    letter-spacing:.02em;
+  }
+  .dial .caption{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    color:var(--paper-dim);
+    margin-top:4px;
+    letter-spacing:.05em;
+  }
+  .ring{
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+  }
+  .ring svg{ width:100%; height:100%; transform:rotate(-90deg); }
+  .ring circle{
+    fill:none;
+    stroke-width:2.5;
+  }
+  .ring .track{ stroke:var(--line); }
+  .ring .fill{
+    stroke:var(--state);
+    stroke-linecap:round;
+    transition:stroke-dashoffset 1s ease, stroke .4s;
+  }
+
+  .readout-row{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-top:18px;
+  }
+  .readout{
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:10px 12px;
+    text-align:center;
+  }
+  .readout .val{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:19px;
+    font-weight:600;
+    color:var(--paper);
+  }
+  .readout .unit{ font-size:11px; color:var(--paper-dim); }
+  .readout .name{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    color:var(--paper-dim);
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    margin-top:4px;
+  }
+
+  /* --- LED strip --- */
+  .led-row{
+    display:flex;
+    gap:14px;
+    margin-top:16px;
+    justify-content:center;
+  }
+  .led{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+  }
+  .led .bulb{
+    width:20px;height:20px;border-radius:50%;
+    background: var(--bulb-off, #2a2f38);
+    border:1px solid rgba(0,0,0,0.3);
+    box-shadow: inset 0 -3px 4px rgba(0,0,0,0.25);
+    transition: background .25s, box-shadow .25s;
+  }
+  .led.on-rain .bulb{ background:var(--rain); box-shadow:0 0 14px 3px var(--rain), inset 0 -2px 4px rgba(0,0,0,0.2); }
+  .led.on-normal .bulb{ background:var(--sun); box-shadow:0 0 14px 3px var(--sun), inset 0 -2px 4px rgba(0,0,0,0.2); }
+  .led.on-storm .bulb{ background:var(--storm); box-shadow:0 0 14px 3px var(--storm), inset 0 -2px 4px rgba(0,0,0,0.2); }
+  .led .tag{ font-family:'IBM Plex Mono',monospace; font-size:9.5px; color:var(--paper-dim); letter-spacing:.06em; }
+
+  /* --- console --- */
+  .console{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    line-height:1.65;
+    background:rgba(0,0,0,0.28);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:12px 14px;
+    height:150px;
+    overflow-y:auto;
+    color:#B9C4B4;
+  }
+  .console .ln .t{ color:var(--paper-dim); margin-right:8px; }
+  .console .ln.err{ color:var(--storm); }
+
+  .demo-row{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:14px;
+  }
+  .foot-note{
+    margin-top:22px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--paper-dim);
+    line-height:1.7;
+    border-top:1px solid var(--line);
+    padding-top:14px;
+  }
+  .foot-note b{ color:var(--paper); }
+  .dial-wrap{
+    height:250px;
+  }
+  .mt22{margin-top:22px;}
+  .paper{color:var(--paper);}
+
+  .wire-list{
+    font-family:'Noto Sans Thai',sans-serif;
+    font-size:12.5px;
+    color:var(--paper-dim);
+    line-height:1.9;
+    margin-top:14px;
+  }
+  .wire-list code{
+    font-family:'IBM Plex Mono',monospace;
+    background:rgba(239,234,224,0.08);
+    padding:1px 5px;
+    border-radius:3px;
+    color:var(--paper);
+  }
+</style>
+</head>
+<body>
+<div class="rig">
+
+  <div class="masthead">
+    <div>
+      <p class="eyebrow">DGT01 1930 · IoT Wireless Networks Project</p>
+      <h1>Smart Weather Lamp — Digital Twin</h1>
+      <p class="sub">ระบบโคมไฟสถานะและแบบจำลองสภาพแวดล้อมดิจิทัลอัจฉริยะ · รับค่าจาก DHT22 + LDR ผ่านบอร์ด ESP32/NodeMCU แล้วขับเคลื่อนฉากจำลองแบบเรียลไทม์</p>
+    </div>
+    <div class="conn">
+      <span class="conn-dot" id="connDot"></span>
+      <span class="conn-label" id="connLabel">NOT CONNECTED</span>
+      <button class="primary" id="btnConnect">เชื่อมต่อบอร์ด (Web Serial)</button>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- LEFT: Signature dial + scene -->
+    <div class="card">
+      <h2>Digital Twin Scene <span class="state-tag" id="stateTag">NORMAL</span></h2>
+      <div class="dial-wrap">
+        <div class="scene-backdrop"><canvas id="scene"></canvas></div>
+        <div class="ring">
+          <svg viewBox="0 0 230 230">
+            <circle class="track" cx="115" cy="115" r="108"></circle>
+            <circle class="fill" id="ringFill" cx="115" cy="115" r="108" stroke-dasharray="679" stroke-dashoffset="679"></circle>
+          </svg>
+        </div>
+        <div class="dial">
+          <div class="glyph" id="stateGlyph">☀️</div>
+          <div class="label" id="stateLabel">แดดปกติ</div>
+          <div class="caption" id="stateCaption">NORMAL · LDR mid-range</div>
+        </div>
+      </div>
+
+      <div class="led-row">
+        <div class="led" id="ledRain"><div class="bulb"></div><span class="tag">RAIN / น้ำเงิน</span></div>
+        <div class="led" id="ledNormal"><div class="bulb"></div><span class="tag">NORMAL / ส้ม</span></div>
+        <div class="led" id="ledStorm"><div class="bulb"></div><span class="tag">SUNNY / แดง</span></div>
+      </div>
+
+      <div class="demo-row">
+        <button data-demo="RAIN">Simulate: RAIN</button>
+        <button data-demo="NORMAL">Simulate: NORMAL</button>
+        <button data-demo="SUNNY">Simulate: SUNNY</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: telemetry + console -->
+    <div class="card">
+      <h2>Live Telemetry · จอ LCD เสมือน</h2>
+      <div class="readout-row">
+        <div class="readout">
+          <div class="val" id="valTemp">--</div>
+          <div class="unit">°C</div>
+          <div class="name">Temp</div>
+        </div>
+        <div class="readout">
+          <div class="val" id="valHum">--</div>
+          <div class="unit">%RH</div>
+          <div class="name">Humidity</div>
+        </div>
+        <div class="readout">
+          <div class="val" id="valLight">--</div>
+          <div class="unit">lux~</div>
+          <div class="name">Light (LDR)</div>
+        </div>
+      </div>
+
+      <h2 class="mt22">Serial Console</h2>
+      <div class="console" id="console"></div>
+
+      <div class="wire-list">
+        <b class="paper">การเชื่อมต่อบอร์ด (ESP32):</b><br>
+        DHT22 → <code>GPIO4</code> &nbsp;|&nbsp; LDR Divider (ร่วมกับ R 10K) → <code>GPIO34 (ADC)</code><br>
+        LED BLUE(RAIN)/YELLOW(NORMAL)/RED(SUNNY) → <code>GPIO16 / 17 / 18</code> ผ่าน R 330Ω<br>
+        LCD I2C (PCF8574) → SDA <code>GPIO21</code> · SCL <code>GPIO22</code><br>
+        บอร์ดส่งข้อมูลทาง Serial (115200 baud) เป็น JSON บรรทัดละก้อน เช่น
+        <code>{"temp":27.4,"humidity":81,"light":420,"state":"RAIN"}</code> — หน้านี้อ่านค่าแล้วสลับฉาก/ค่าตัวเลขให้ตรงกันทันที
+      </div>
+    </div>
+
+  </div>
+
+  <div class="foot-note">
+    <b>หมายเหตุ:</b> ต้องเปิดผ่าน Google Chrome หรือ Edge (รองรับ Web Serial API) และเสียบบอร์ดผ่าน USB ก่อนกด "เชื่อมต่อบอร์ด" หากยังไม่มีฮาร์ดแวร์พร้อม ใช้ปุ่ม Simulate ด้านซ้ายเพื่อพรีวิวการทำงานของ Digital Twin ได้ทันที
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const STATES = {
+    RAIN:   { glyph:'🌧️', label:'ฝนตก', caption:'RAIN · Humidity high', color:'--rain', dim:'--rain-dim', led:'ledRain', class:'on-rain', ring:0.35 },
+    NORMAL: { glyph:'☀️', label:'แดดปกติ', caption:'NORMAL · LDR mid-range', color:'--sun', dim:'--sun-dim', led:'ledNormal', class:'on-normal', ring:0.62 },
+    SUNNY:  { glyph:'🔥', label:'แดดแรง', caption:'SUNNY · LDR high intensity', color:'--storm', dim:'--storm-dim', led:'ledStorm', class:'on-storm', ring:0.9 }
+  };
+  const root = document.documentElement.style;
+  const CIRC = 679; // 2*pi*108 approx
+
+  const stateGlyph = document.getElementById('stateGlyph');
+  const stateLabel = document.getElementById('stateLabel');
+  const stateCaption = document.getElementById('stateCaption');
+  const stateTag = document.getElementById('stateTag');
+  const ringFill = document.getElementById('ringFill');
+  const connDot = document.getElementById('connDot');
+  const connLabel = document.getElementById('connLabel');
+  const btnConnect = document.getElementById('btnConnect');
+  const consoleEl = document.getElementById('console');
+  const valTemp = document.getElementById('valTemp');
+  const valHum = document.getElementById('valHum');
+  const valLight = document.getElementById('valLight');
+  const leds = { ledRain: document.getElementById('ledRain'), ledNormal: document.getElementById('ledNormal'), ledStorm: document.getElementById('ledStorm') };
+
+  let currentState = 'NORMAL';
+  let port, reader, keepReading = false;
+
+  function log(msg, isErr){
+    const row = document.createElement('div');
+    row.className = 'ln' + (isErr ? ' err' : '');
+    const time = new Date().toLocaleTimeString('th-TH', {hour12:false});
+    row.innerHTML = '<span class="t">'+time+'</span>'+msg;
+    consoleEl.appendChild(row);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+
+  function setLive(isLive){
+    connDot.classList.toggle('live', isLive);
+    connLabel.textContent = isLive ? 'CONNECTED' : 'NOT CONNECTED';
+  }
+
+  function applyState(name, fromSerial, reading){
+    const s = STATES[name];
+    if(!s) return;
+    currentState = name;
+    root.setProperty('--state', 'var(' + s.color + ')');
+    root.setProperty('--state-dim', 'var(' + s.dim + ')');
+    stateGlyph.textContent = s.glyph;
+    stateLabel.textContent = s.label;
+    stateCaption.textContent = s.caption;
+    stateTag.textContent = name;
+
+    const offset = CIRC * (1 - s.ring);
+    ringFill.style.strokeDashoffset = offset;
+
+    Object.values(leds).forEach(el => el.classList.remove('on-rain','on-normal','on-storm'));
+    leds[s.led].classList.add(s.class);
+
+    if(reading){
+      // ค่าจริงจากบอร์ด (JSON): {temp, humidity, light, state}
+      valTemp.textContent = Number(reading.temp).toFixed(1);
+      valHum.textContent  = Math.round(reading.humidity);
+      valLight.textContent= Math.round(reading.light);
+    } else {
+      // โหมด Simulate: ไม่มีฮาร์ดแวร์จริง จึงสุ่มค่าที่สมเหตุสมผลไว้พรีวิวฉาก
+      const ranges = {
+        RAIN:   { t:[22,25], h:[78,92], l:[80,300] },
+        NORMAL: { t:[27,31], h:[45,60], l:[600,2200] },
+        SUNNY:  { t:[33,38], h:[25,40], l:[3200,4500] }
+      }[name];
+      valTemp.textContent = (ranges.t[0] + Math.random()*(ranges.t[1]-ranges.t[0])).toFixed(1);
+      valHum.textContent  = Math.round(ranges.h[0] + Math.random()*(ranges.h[1]-ranges.h[0]));
+      valLight.textContent= Math.round(ranges.l[0] + Math.random()*(ranges.l[1]-ranges.l[0]));
+    }
+
+    log((fromSerial ? '[SERIAL] ' : '[SIM] ') + 'state → <b style="color:var('+s.color+')">'+name+'</b>');
+    drawScene(name);
+  }
+
+  document.querySelectorAll('[data-demo]').forEach(btn=>{
+    btn.addEventListener('click', ()=> applyState(btn.dataset.demo, false));
+  });
+
+  // ---- Web Serial ----
+  async function connectSerial(){
+    if(!('serial' in navigator)){
+      log('เบราว์เซอร์นี้ไม่รองรับ Web Serial API — โปรดใช้ Chrome หรือ Edge', true);
+      return;
+    }
+    try{
+      port = await navigator.serial.requestPort();
+      await port.open({ baudRate: 115200 });
+      setLive(true);
+      log('เชื่อมต่อบอร์ดสำเร็จ กำลังรอข้อมูล...');
+      keepReading = true;
+      readLoop();
+      btnConnect.textContent = 'ตัดการเชื่อมต่อ';
+    }catch(err){
+      log('เชื่อมต่อไม่สำเร็จ: ' + err.message, true);
+    }
+  }
+
+  async function disconnectSerial(){
+    keepReading = false;
+    try{ if(reader) await reader.cancel(); }catch(e){}
+    try{ if(port) await port.close(); }catch(e){}
+    setLive(false);
+    btnConnect.textContent = 'เชื่อมต่อบอร์ด (Web Serial)';
+    log('ตัดการเชื่อมต่อแล้ว');
+  }
+
+  async function readLoop(){
+    const decoder = new TextDecoderStream();
+    const readableClosed = port.readable.pipeTo(decoder.writable);
+    reader = decoder.readable.getReader();
+    let buffer = '';
+    try{
+      while(keepReading){
+        const { value, done } = await reader.read();
+        if(done) break;
+        if(value){
+          buffer += value;
+          let idx;
+          while((idx = buffer.indexOf('\n')) >= 0){
+            const line = buffer.slice(0, idx).trim();
+            buffer = buffer.slice(idx+1);
+            if(line) handleLine(line);
+          }
+        }
+      }
+    }catch(err){
+      log('การอ่านข้อมูลขาดตอน: ' + err.message, true);
+    }
+  }
+
+  function handleLine(line){
+    // บอร์ดส่งข้อมูลเป็น JSON บรรทัดละหนึ่งก้อน เช่น
+    // {"temp":27.4,"humidity":81.0,"light":420,"state":"RAIN"}
+    if(line.startsWith('{')){
+      try{
+        const data = JSON.parse(line);
+        if(data.error){
+          log('[SERIAL] เซนเซอร์อ่านค่าไม่ได้: ' + data.error, true);
+          return;
+        }
+        const state = String(data.state || '').toUpperCase();
+        if(STATES[state]){
+          applyState(state, true, data);
+        } else {
+          log('[SERIAL] JSON ไม่มีสถานะที่รู้จัก: ' + line, true);
+        }
+      }catch(e){
+        log('[SERIAL] แยก JSON ไม่สำเร็จ: ' + line, true);
+      }
+    } else {
+      log('[SERIAL] ' + line);
+    }
+  }
+
+  btnConnect.addEventListener('click', ()=>{
+    if(connDot.classList.contains('live')) disconnectSerial();
+    else connectSerial();
+  });
+
+  // ---- Ambient scene canvas ----
+  const canvas = document.getElementById('scene');
+  const ctx = canvas.getContext('2d');
+  let dpr = window.devicePixelRatio || 1;
+  let drops = [];
+  let animId;
+
+  function resizeCanvas(){
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  function initDrops(w,h,count){
+    drops = Array.from({length:count}, ()=>({
+      x: Math.random()*w, y: Math.random()*h, len: 8+Math.random()*14, speed: 4+Math.random()*5
+    }));
+  }
+
+  function drawScene(state){
+    cancelAnimationFrame(animId);
+    const w = canvas.width/dpr, h = canvas.height/dpr;
+    if(state === 'RAIN'){
+      initDrops(w,h,70);
+      loopRain(w,h);
+    } else if(state === 'SUNNY'){
+      cancelAnimationFrame(animId);
+      loopSun(w,h,true);
+    } else {
+      cancelAnimationFrame(animId);
+      loopSun(w,h,false);
+    }
+  }
+
+  function grad(ctx,w,h,c1,c2){
+    const g = ctx.createLinearGradient(0,0,0,h);
+    g.addColorStop(0,c1); g.addColorStop(1,c2);
+    return g;
+  }
+
+  function loopRain(w,h){
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = grad(ctx,w,h,'#1c3247','#0e1a26');
+    ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle = 'rgba(150,190,220,0.5)';
+    ctx.lineWidth = 1.4;
+    drops.forEach(d=>{
+      ctx.beginPath();
+      ctx.moveTo(d.x, d.y);
+      ctx.lineTo(d.x-3, d.y+d.len);
+      ctx.stroke();
+      d.y += d.speed;
+      d.x -= 0.6;
+      if(d.y > h){ d.y = -10; d.x = Math.random()*w; }
+    });
+    animId = requestAnimationFrame(()=>loopRain(w,h));
+  }
+
+  function loopSun(w,h,hot){
+    const t = performance.now()/1000;
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = hot ? grad(ctx,w,h,'#4a1f14','#1a0e0a') : grad(ctx,w,h,'#2c4a55','#0f1c22');
+    ctx.fillRect(0,0,w,h);
+    const cx = w*0.72, cy = h*0.32, r = hot? 30:24;
+    const glow = ctx.createRadialGradient(cx,cy,0,cx,cy,hot?90:65);
+    glow.addColorStop(0, hot? 'rgba(240,110,60,0.65)':'rgba(240,190,80,0.55)');
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(cx,cy,hot?90:65,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = hot ? '#F0632C' : '#F0C24F';
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+    if(hot){
+      ctx.strokeStyle = 'rgba(240,99,44,0.5)';
+      ctx.lineWidth = 2;
+      for(let i=0;i<8;i++){
+        const a = t*0.6 + i*(Math.PI/4);
+        ctx.beginPath();
+        ctx.moveTo(cx+Math.cos(a)*(r+6), cy+Math.sin(a)*(r+6));
+        ctx.lineTo(cx+Math.cos(a)*(r+16), cy+Math.sin(a)*(r+16));
+        ctx.stroke();
+      }
+    }
+    animId = requestAnimationFrame(()=>loopSun(w,h,hot));
+  }
+
+  // init
+  applyState('NORMAL', false);
+})();
+</script>
+</body>
+</html>
