@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Digital Twin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root{
+          --ink:#0b0f17;
+          --panel:#131b26;
+          --panel-border: rgba(255,255,255,0.08);
+          --paper:#F3EFE6;
+          --paper-dim:#9EABB8;
+          --rain:#38bdf8;
+          --rain-glow: rgba(56, 189, 248, 0.4);
+          --sun:#fbbf24;
+          --sun-glow: rgba(251, 191, 36, 0.4);
+          --storm:#f97316;
+          --storm-glow: rgba(249, 115, 22, 0.5);
+          --normal:#34d399;
+          --state: var(--sun);
+          --state-glow: var(--sun-glow);
+        }
+        *{box-sizing:border-box;}
+        html,body{margin:0;padding:0;}
+        body{
+          background: radial-gradient(circle at top, #182232 0%, var(--ink) 100%);
+          color:var(--paper);
+          font-family:'Noto Sans Thai','IBM Plex Mono',monospace;
+          min-height:100vh;
+          display:flex;
+          justify-content:center;
+          padding:20px 14px 40px;
+        }
+        .rig{ width:100%; max-width:1180px; }
+        .masthead{
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          flex-wrap:wrap;
+          gap:12px;
+          border-bottom:1px solid var(--panel-border);
+          padding-bottom:14px;
+          margin-bottom:18px;
+        }
+        .masthead h1{
+          font-family:'Space Grotesk',sans-serif;
+          font-weight:700;
+          font-size:clamp(18px,2.5vw,26px);
+          margin:0;
+          color:#fff;
+        }
+        .conn-box{
+          display:flex;
+          align-items:center;
+          gap:8px;
+          background: rgba(0,0,0,0.3);
+          padding: 6px 12px;
+          border-radius: 20px;
+          border: 1px solid var(--panel-border);
+        }
+        .conn-dot{
+          width:10px;height:10px;border-radius:50%;
+          background:#ef4444;
+          transition: all .3s;
+        }
+        .conn-dot.live{
+          background:#10b981;
+          box-shadow:0 0 10px #10b981;
+        }
+        .conn-label{
+          font-family:'IBM Plex Mono',monospace;
+          font-size:11px;
+          color:var(--paper-dim);
+        }
+
+        .ip-bar{
+          display:flex;
+          gap:8px;
+          margin-bottom:16px;
+          background:var(--panel);
+          padding:10px 14px;
+          border-radius:8px;
+          border:1px solid var(--panel-border);
+          align-items:center;
+        }
+        .ip-bar input{
+          flex:1;
+          background:#0b0f17;
+          border:1px solid var(--panel-border);
+          color:#38bdf8;
+          padding:8px 12px;
+          border-radius:6px;
+          font-family:'IBM Plex Mono',monospace;
+          font-size:13px;
+        }
+        .ip-bar button{
+          padding:8px 14px;
+          background:#2563eb;
+          color:#fff;
+          border:none;
+          border-radius:6px;
+          cursor:pointer;
+          font-family:'IBM Plex Mono',monospace;
+          font-size:12px;
+        }
+
+        .grid{
+          display:grid;
+          grid-template-columns: 1.15fr 1fr;
+          gap:20px;
+        }
+        @media (max-width:880px){ .grid{grid-template-columns:1fr;} }
+
+        .card{
+          background:var(--panel);
+          border:1px solid var(--panel-border);
+          border-radius:12px;
+          padding:18px;
+          box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+        }
+        .card h2{
+          font-family:'IBM Plex Mono',monospace;
+          font-size:11px;
+          letter-spacing:.16em;
+          text-transform:uppercase;
+          color:var(--paper-dim);
+          margin:0 0 14px;
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+        }
+        .state-tag{
+          font-family:'IBM Plex Mono',monospace;
+          font-size:11px;
+          padding:3px 10px;
+          border-radius:20px;
+          border:1px solid var(--state);
+          color:var(--state);
+          font-weight:600;
+        }
+
+        .viewport-container{
+          position:relative;
+          width:100%;
+          height:240px;
+          border-radius:10px;
+          overflow:hidden;
+          background:#070b10;
+          border:1px solid var(--panel-border);
+          display:flex;
+          align-items:center;
+          justify-content:center;
+        }
+        canvas#sceneCanvas{
+          position:absolute;
+          inset:0;
+          width:100%;
+          height:100%;
+        }
+        .weather-overlay{
+          position:relative;
+          z-index:3;
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+          pointer-events:none;
+        }
+        .weather-overlay .label{
+          font-family:'Space Grotesk',sans-serif;
+          font-size:24px;
+          font-weight:700;
+          color:#fff;
+          margin-top: 60px;
+        }
+        .weather-overlay .subtext{
+          font-family:'IBM Plex Mono',monospace;
+          font-size:10.5px;
+          color:var(--paper-dim);
+          margin-top:4px;
+        }
+
+        .readout-row{
+          display:grid;
+          grid-template-columns:repeat(3,1fr);
+          gap:10px;
+          margin-top:16px;
+        }
+        .readout{
+          background: rgba(0,0,0,0.25);
+          border:1px solid var(--panel-border);
+          border-radius:8px;
+          padding:10px;
+          text-align:center;
+        }
+        .readout .val{
+          font-family:'Space Grotesk',sans-serif;
+          font-size:22px;
+          font-weight:700;
+          color:#fff;
+        }
+        .readout .unit{ font-size:12px; color:var(--paper-dim); margin-left:2px; }
+        .readout .name{
+          font-family:'IBM Plex Mono',monospace;
+          font-size:10px;
+          color:var(--paper-dim);
+          text-transform:uppercase;
+          margin-top:2px;
+        }
+
+        .led-row{
+          display:flex;
+          gap:16px;
+          margin:16px 0;
+          justify-content:center;
+        }
+        .led{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+        .led .bulb{
+          width:20px;height:20px;border-radius:50%;
+          background: #1c2430;
+          border:1px solid rgba(255,255,255,0.1);
+          transition: all .3s ease;
+        }
+        .led.on-rain .bulb{ background:var(--rain); box-shadow:0 0 14px var(--rain); }
+        .led.on-normal .bulb{ background:var(--sun); box-shadow:0 0 14px var(--sun); }
+        .led.on-storm .bulb{ background:var(--storm); box-shadow:0 0 14px var(--storm); }
+        .led .tag{ font-family:'IBM Plex Mono',monospace; font-size:9.5px; color:var(--paper-dim); }
+
+        .demo-row{
+          display:grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap:8px;
+          margin-top:14px;
+        }
+        button.btn-ctrl{
+          font-family:'IBM Plex Mono',monospace;
+          font-size:12px;
+          border:1px solid var(--panel-border);
+          background:rgba(255,255,255,0.04);
+          color:var(--paper);
+          padding:10px;
+          border-radius:6px;
+          cursor:pointer;
+        }
+        button.btn-ctrl:active{ background:rgba(255,255,255,0.15); }
+
+        .console{
+          font-family:'IBM Plex Mono',monospace;
+          font-size:11px;
+          line-height:1.6;
+          background:rgba(0,0,0,0.4);
+          border:1px solid var(--panel-border);
+          border-radius:6px;
+          padding:10px;
+          height:150px;
+          overflow-y:auto;
+          color:#a7f3d0;
+          margin-top:14px;
+        }
+        .console .ln.err{ color:#f87171; }
+        .console .ln.tx{ color:#38bdf8; }
+    </style>
+</head>
+<body>
+<div class="rig">
+
+    <div class="masthead">
+        <div>
+            <h1>Smart Weather Lamp — Digital Twin</h1>
+        </div>
+        <div class="conn-box">
+            <span class="conn-dot" id="connDot"></span>
+            <span class="conn-label" id="connLabel">DISCONNECTED</span>
+        </div>
+    </div>
+
+    <div class="ip-bar">
+        <span style="font-size:12px; color:var(--paper-dim);">ESP32 IP:</span>
+        <input type="text" id="inputIp" value="192.168.1.6" placeholder="เช่น 192.168.1.6">
+        <button id="btnSaveIp">บันทึก IP</button>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h2>Digital Twin Scene <span class="state-tag" id="stateTag">NORMAL</span></h2>
+
+            <div class="viewport-container">
+                <canvas id="sceneCanvas"></canvas>
+                <div class="weather-overlay">
+                    <div class="label" id="stateLabel">กำลังรอข้อมูล...</div>
+                    <div class="subtext" id="stateCaption">CONNECTING TO ESP32 NODE</div>
+                </div>
+            </div>
+
+            <div class="led-row">
+                <div class="led" id="ledRain"><div class="bulb"></div><span class="tag">RAIN</span></div>
+                <div class="led" id="ledNormal"><div class="bulb"></div><span class="tag">NORMAL</span></div>
+                <div class="led" id="ledStorm"><div class="bulb"></div><span class="tag">SUNNY</span></div>
+            </div>
+
+            <div class="demo-row">
+                <button class="btn-ctrl" data-demo="RAIN">🌧️ จำลอง: RAIN</button>
+                <button class="btn-ctrl" data-demo="NORMAL">☀️ จำลอง: NORMAL</button>
+                <button class="btn-ctrl" data-demo="SUNNY">🔥 จำลอง: SUNNY</button>
+                <button class="btn-ctrl" data-demo="AUTO" style="border-color:#10b981; color:#34d399;">🔄 โหมดเซนเซอร์ (AUTO)</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Live Telemetry (ค่าจริงจาก ESP32)</h2>
+            <div class="readout-row">
+                <div class="readout">
+                    <div class="val"><span id="valTemp">--</span><span class="unit">°C</span></div>
+                    <div class="name">Temp (DHT)</div>
+                </div>
+                <div class="readout">
+                    <div class="val"><span id="valHum">--</span><span class="unit">%</span></div>
+                    <div class="name">Humidity</div>
+                </div>
+                <div class="readout">
+                    <div class="val"><span id="valLight">--</span><span class="unit">raw</span></div>
+                    <div class="name">Light (LDR)</div>
+                </div>
+            </div>
+
+            <h2 style="margin-top:16px;">System Log</h2>
+            <div class="console" id="console"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function(){
+      // กำหนดค่าเริ่มต้นเป็น IP ปัจจุบันของ ESP32
+      const DEFAULT_IP = "192.168.1.6";
+      let ESP32_BASE_URL = "http://" + (localStorage.getItem('ESP32_IP') || DEFAULT_IP);
+
+      const STATES = {
+        RAIN:   { label:'ฝนตกฟ้าครึ้ม', caption:'RAIN · High Humidity Detected', color:'--rain', glow:'--rain-glow', led:'ledRain', class:'on-rain' },
+        NORMAL: { label:'แดดร่มปกติ', caption:'NORMAL · Optimal Ambient Light', color:'--sun', glow:'--sun-glow', led:'ledNormal', class:'on-normal' },
+        SUNNY:  { label:'แดดแรงจัด / ร้อนสูง', caption:'SUNNY · Intense Radiant Flux', color:'--storm', glow:'--storm-glow', led:'ledStorm', class:'on-storm' }
+      };
+      const root = document.documentElement.style;
+
+      const inputIp = document.getElementById('inputIp');
+      const btnSaveIp = document.getElementById('btnSaveIp');
+      const stateLabel = document.getElementById('stateLabel');
+      const stateCaption = document.getElementById('stateCaption');
+      const stateTag = document.getElementById('stateTag');
+      const connDot = document.getElementById('connDot');
+      const connLabel = document.getElementById('connLabel');
+      const consoleEl = document.getElementById('console');
+      const valTemp = document.getElementById('valTemp');
+      const valHum = document.getElementById('valHum');
+      const valLight = document.getElementById('valLight');
+      const leds = { ledRain: document.getElementById('ledRain'), ledNormal: document.getElementById('ledNormal'), ledStorm: document.getElementById('ledStorm') };
+
+      let activeWeather = '';
+
+      // อัปเดตช่องข้อความด้วย IP จริง
+      inputIp.value = localStorage.getItem('ESP32_IP') || DEFAULT_IP;
+
+      btnSaveIp.addEventListener('click', ()=>{
+        const val = inputIp.value.trim().replace('http://','').replace('/','');
+        localStorage.setItem('ESP32_IP', val);
+        ESP32_BASE_URL = "http://" + val;
+        log('บันทึก IP ใหม่: ' + ESP32_BASE_URL, 'tx');
+        fetchTelemetry();
+      });
+
+      function log(msg, type){
+        const row = document.createElement('div');
+        row.className = 'ln' + (type ? ' ' + type : '');
+        const time = new Date().toLocaleTimeString('th-TH', {hour12:false});
+        row.innerHTML = '<span style="color:#64748b;margin-right:6px;">'+time+'</span>'+msg;
+        consoleEl.appendChild(row);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+      }
+
+      function applyState(name, reading){
+        const s = STATES[name];
+        if(!s) return;
+
+        if(reading){
+          valTemp.textContent = Number(reading.temp).toFixed(1);
+          valHum.textContent = Math.round(reading.humidity);
+          valLight.textContent = Math.round(reading.light);
+        }
+
+        if(activeWeather !== name){
+          activeWeather = name;
+          root.setProperty('--state', 'var(' + s.color + ')');
+          root.setProperty('--state-glow', 'var(' + s.glow + ')');
+          stateLabel.textContent = s.label;
+          stateCaption.textContent = s.caption;
+          stateTag.textContent = name;
+
+          Object.values(leds).forEach(el => el.classList.remove('on-rain','on-normal','on-storm'));
+          leds[s.led].classList.add(s.class);
+
+          log('[SYNC 📲] ซิงค์สภาพอากาศเป็น <b>' + name + '</b>');
+          initSceneParticles(name);
+        }
+      }
+
+      // ส่งคำสั่งเปลี่ยนโหมดไปยังบอร์ด ESP32
+      async function sendCommand(mode) {
+        try {
+          log('[TX] กำลังสั่งบอร์ด: <b>' + mode + '</b>', 'tx');
+          const res = await fetch(ESP32_BASE_URL + '/api/set?mode=' + mode, { cache: "no-store" });
+          if(res.ok){
+            log('[RX] ESP32 ตอบรับคำสั่ง ' + mode);
+            fetchTelemetry();
+          }
+        } catch(err) {
+          log('ส่งคำสั่งไม่สำเร็จ ตรวจสอบ IP หรือการเชื่อมต่อ: ' + err.message, 'err');
+        }
+      }
+
+      // ดึงค่า Telemetry จริงจาก ESP32
+      async function fetchTelemetry() {
+        try {
+          const res = await fetch(ESP32_BASE_URL + '/api/telemetry', { cache: "no-store" });
+          if (res.ok) {
+            const data = await res.json();
+            connDot.classList.add('live');
+            connLabel.textContent = 'CONNECTED (' + inputIp.value.trim() + ')';
+            applyState(data.state, data);
+          } else {
+            throw new Error('HTTP ' + res.status);
+          }
+        } catch (err) {
+          connDot.classList.remove('live');
+          connLabel.textContent = 'DISCONNECTED';
+        }
+      }
+
+      document.querySelectorAll('[data-demo]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          sendCommand(btn.dataset.demo);
+        });
+      });
+
+      setInterval(fetchTelemetry, 1500);
+      fetchTelemetry();
+
+      // --- Dynamic Particle Background ---
+      const canvas = document.getElementById('sceneCanvas');
+      const ctx = canvas.getContext('2d');
+      let w = 0, h = 0;
+      let rainDrops = [], sunDust = [], fireFlames = [];
+
+      function resizeCanvas(){
+        w = canvas.parentElement.clientWidth;
+        h = canvas.parentElement.clientHeight;
+        canvas.width = w;
+        canvas.height = h;
+      }
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      function initSceneParticles(mode){
+        if(mode === 'RAIN'){
+          rainDrops = Array.from({length: 80}, () => ({
+            x: Math.random() * w, y: Math.random() * h,
+            len: 12 + Math.random() * 15, speed: 8 + Math.random() * 6
+          }));
+        } else if(mode === 'NORMAL'){
+          sunDust = Array.from({length: 30}, () => ({
+            x: Math.random() * w, y: Math.random() * h,
+            size: 1 + Math.random() * 2, vx: (Math.random()-0.5)*0.3, vy: -0.2 - Math.random()*0.3
+          }));
+        } else if(mode === 'SUNNY'){
+          fireFlames = [];
+        }
+      }
+
+      function renderScene(){
+        ctx.clearRect(0, 0, w, h);
+
+        if(activeWeather === 'RAIN'){
+          ctx.fillStyle = '#060d17';
+          ctx.fillRect(0,0,w,h);
+          ctx.strokeStyle = 'rgba(125,211,252,0.6)';
+          ctx.lineWidth = 1.5;
+          rainDrops.forEach(d => {
+            ctx.beginPath();
+            ctx.moveTo(d.x, d.y);
+            ctx.lineTo(d.x - 1, d.y + d.len);
+            ctx.stroke();
+            d.y += d.speed;
+            if(d.y > h){ d.y = -10; d.x = Math.random() * w; }
+          });
+        } else if(activeWeather === 'NORMAL'){
+          ctx.fillStyle = '#0e1a27';
+          ctx.fillRect(0,0,w,h);
+          ctx.fillStyle = '#fbbf24';
+          ctx.beginPath();
+          ctx.arc(w/2, 60, 22, 0, Math.PI*2);
+          ctx.fill();
+          sunDust.forEach(d => {
+            ctx.fillStyle = 'rgba(254,240,138,0.5)';
+            ctx.beginPath();
+            ctx.arc(d.x, d.y, d.size, 0, Math.PI*2);
+            ctx.fill();
+            d.x += d.vx; d.y += d.vy;
+            if(d.y < 0){ d.y = h; d.x = Math.random()*w; }
+          });
+        } else if(activeWeather === 'SUNNY'){
+          ctx.fillStyle = '#220804';
+          ctx.fillRect(0,0,w,h);
+          for(let k=0; k<2; k++){
+            fireFlames.push({
+              x: w/2 + (Math.random()-0.5)*40, y: 100,
+              vx: (Math.random()-0.5)*1.2, vy: -2 - Math.random()*2,
+              size: 14 + Math.random()*12, life: 1.0
+            });
+          }
+          for(let i=fireFlames.length-1; i>=0; i--){
+            const p = fireFlames[i];
+            ctx.fillStyle = `rgba(249,115,22,${p.life * 0.7})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+            ctx.fill();
+            p.x += p.vx; p.y += p.vy;
+            p.life -= 0.04;
+            if(p.life <= 0) fireFlames.splice(i, 1);
+          }
+        }
+        requestAnimationFrame(renderScene);
+      }
+      applyState('NORMAL', null);
+      requestAnimationFrame(renderScene);
+    })();
+</script>
+</body>
+</html>
