@@ -2,153 +2,176 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weather Digital Twin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <title>Smart Weather Lamp — Digital Twin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         :root{
-          --ink:#0b0f17;
-          --panel:#131b26;
+          --ink:#080c14;
+          --panel:#101724;
           --panel-border: rgba(255,255,255,0.08);
-          --paper:#F3EFE6;
-          --paper-dim:#9EABB8;
+          --paper:#f1f5f9;
+          --paper-dim:#94a3b8;
           --rain:#38bdf8;
-          --rain-glow: rgba(56, 189, 248, 0.4);
+          --rain-glow: rgba(56, 189, 248, 0.35);
           --sun:#fbbf24;
-          --sun-glow: rgba(251, 191, 36, 0.4);
+          --sun-glow: rgba(251, 191, 36, 0.35);
           --storm:#f97316;
-          --storm-glow: rgba(249, 115, 22, 0.5);
-          --normal:#34d399;
+          --storm-glow: rgba(249, 115, 22, 0.45);
+          --normal:#10b981;
           --state: var(--sun);
           --state-glow: var(--sun-glow);
         }
         *{box-sizing:border-box;}
         html,body{margin:0;padding:0;}
         body{
-          background: radial-gradient(circle at top, #182232 0%, var(--ink) 100%);
+          background: radial-gradient(circle at 50% 0%, #152132 0%, var(--ink) 100%);
           color:var(--paper);
-          font-family:'Noto Sans Thai','IBM Plex Mono',monospace;
+          font-family:'Prompt', sans-serif;
           min-height:100vh;
           display:flex;
           justify-content:center;
-          padding:20px 14px 40px;
+          padding-top: max(16px, env(safe-area-inset-top, 16px));
+          padding-left: max(14px, env(safe-area-inset-left, 14px));
+          padding-right: max(14px, env(safe-area-inset-right, 14px));
+          padding-bottom: max(32px, env(safe-area-inset-bottom, 32px));
+          -webkit-font-smoothing: antialiased;
         }
         .rig{ width:100%; max-width:1180px; }
+
+        /* Top Bar */
         .masthead{
           display:flex;
           justify-content:space-between;
           align-items:center;
-          flex-wrap:wrap;
-          gap:12px;
+          gap:8px;
           border-bottom:1px solid var(--panel-border);
-          padding-bottom:14px;
-          margin-bottom:18px;
+          padding-bottom:12px;
+          margin-bottom:12px;
         }
         .masthead h1{
-          font-family:'Space Grotesk',sans-serif;
+          font-family:'Chakra Petch', sans-serif;
           font-weight:700;
-          font-size:clamp(18px,2.5vw,26px);
+          font-size:clamp(16px, 4vw, 22px);
           margin:0;
           color:#fff;
+          letter-spacing: -0.01em;
         }
         .conn-box{
           display:flex;
           align-items:center;
-          gap:8px;
-          background: rgba(0,0,0,0.3);
-          padding: 6px 12px;
+          gap:6px;
+          background: rgba(0,0,0,0.4);
+          padding: 4px 10px;
           border-radius: 20px;
           border: 1px solid var(--panel-border);
         }
         .conn-dot{
-          width:10px;height:10px;border-radius:50%;
+          width:8px;height:8px;border-radius:50%;
           background:#ef4444;
           transition: all .3s;
         }
         .conn-dot.live{
           background:#10b981;
-          box-shadow:0 0 10px #10b981;
+          box-shadow:0 0 8px #10b981;
         }
         .conn-label{
           font-family:'IBM Plex Mono',monospace;
-          font-size:11px;
+          font-size:10px;
           color:var(--paper-dim);
+          font-weight: 500;
         }
 
+        /* IP Setting Input Bar */
         .ip-bar{
           display:flex;
-          gap:8px;
-          margin-bottom:16px;
+          gap:6px;
+          margin-bottom:14px;
           background:var(--panel);
-          padding:10px 14px;
-          border-radius:8px;
+          padding:8px 10px;
+          border-radius:10px;
           border:1px solid var(--panel-border);
           align-items:center;
         }
+        .ip-bar label{
+          font-family:'IBM Plex Mono',monospace;
+          font-size:11px;
+          color:var(--paper-dim);
+          white-space: nowrap;
+        }
         .ip-bar input{
           flex:1;
-          background:#0b0f17;
+          min-width:0;
+          background:#090e17;
           border:1px solid var(--panel-border);
           color:#38bdf8;
-          padding:8px 12px;
+          padding:7px 10px;
           border-radius:6px;
           font-family:'IBM Plex Mono',monospace;
-          font-size:13px;
+          font-size:12px;
+          outline: none;
         }
         .ip-bar button{
-          padding:8px 14px;
-          background:#2563eb;
+          padding:7px 12px;
+          background: #2563eb;
           color:#fff;
           border:none;
           border-radius:6px;
           cursor:pointer;
-          font-family:'IBM Plex Mono',monospace;
+          font-family:'Prompt', sans-serif;
+          font-weight: 500;
           font-size:12px;
+          white-space: nowrap;
+          transition: 0.2s;
         }
+        .ip-bar button:active{ background:#1d4ed8; }
 
+        /* Grid System */
         .grid{
           display:grid;
           grid-template-columns: 1.15fr 1fr;
-          gap:20px;
+          gap:14px;
         }
         @media (max-width:880px){ .grid{grid-template-columns:1fr;} }
 
         .card{
           background:var(--panel);
           border:1px solid var(--panel-border);
-          border-radius:12px;
-          padding:18px;
-          box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+          border-radius:14px;
+          padding:14px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.3);
         }
         .card h2{
           font-family:'IBM Plex Mono',monospace;
-          font-size:11px;
-          letter-spacing:.16em;
+          font-size:10.5px;
+          letter-spacing:.14em;
           text-transform:uppercase;
           color:var(--paper-dim);
-          margin:0 0 14px;
+          margin:0 0 12px;
           display:flex;
           justify-content:space-between;
           align-items:center;
         }
         .state-tag{
           font-family:'IBM Plex Mono',monospace;
-          font-size:11px;
-          padding:3px 10px;
-          border-radius:20px;
+          font-size:10px;
+          padding:2px 8px;
+          border-radius:12px;
           border:1px solid var(--state);
           color:var(--state);
           font-weight:600;
         }
 
+        /* 3D/Canvas Scene */
         .viewport-container{
           position:relative;
           width:100%;
           height:240px;
-          border-radius:10px;
+          border-radius:12px;
           overflow:hidden;
-          background:#070b10;
+          background:#060a10;
           border:1px solid var(--panel-border);
           display:flex;
           align-items:center;
@@ -159,6 +182,7 @@
           inset:0;
           width:100%;
           height:100%;
+          display:block;
         }
         .weather-overlay{
           position:relative;
@@ -167,97 +191,115 @@
           flex-direction:column;
           align-items:center;
           pointer-events:none;
+          text-align: center;
+          padding: 0 10px;
+          margin-top: 55px;
         }
         .weather-overlay .label{
-          font-family:'Space Grotesk',sans-serif;
-          font-size:24px;
-          font-weight:700;
+          font-family:'Prompt', sans-serif;
+          font-size:clamp(16px, 4.4vw, 22px);
+          font-weight:600;
           color:#fff;
-          margin-top: 60px;
+          letter-spacing: 0.01em;
+          text-shadow: 0 2px 12px rgba(0,0,0,0.95);
+          line-height: 1.3;
+          white-space: nowrap;
         }
         .weather-overlay .subtext{
           font-family:'IBM Plex Mono',monospace;
-          font-size:10.5px;
-          color:var(--paper-dim);
-          margin-top:4px;
-        }
-
-        .readout-row{
-          display:grid;
-          grid-template-columns:repeat(3,1fr);
-          gap:10px;
-          margin-top:16px;
-        }
-        .readout{
-          background: rgba(0,0,0,0.25);
-          border:1px solid var(--panel-border);
-          border-radius:8px;
-          padding:10px;
-          text-align:center;
-        }
-        .readout .val{
-          font-family:'Space Grotesk',sans-serif;
-          font-size:22px;
-          font-weight:700;
-          color:#fff;
-        }
-        .readout .unit{ font-size:12px; color:var(--paper-dim); margin-left:2px; }
-        .readout .name{
-          font-family:'IBM Plex Mono',monospace;
           font-size:10px;
-          color:var(--paper-dim);
-          text-transform:uppercase;
-          margin-top:2px;
+          color:rgba(255,255,255,0.7);
+          margin-top:4px;
+          letter-spacing: 0.02em;
+          text-shadow: 0 1px 6px rgba(0,0,0,0.9);
         }
 
+        /* LED Indicator Row */
         .led-row{
           display:flex;
-          gap:16px;
-          margin:16px 0;
+          gap:20px;
+          margin:14px 0 12px;
           justify-content:center;
         }
-        .led{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+        .led{ display:flex; flex-direction:column; align-items:center; gap:5px; }
         .led .bulb{
-          width:20px;height:20px;border-radius:50%;
-          background: #1c2430;
-          border:1px solid rgba(255,255,255,0.1);
+          width:18px;height:18px;border-radius:50%;
+          background: #17212d;
+          border:1px solid rgba(255,255,255,0.08);
           transition: all .3s ease;
         }
-        .led.on-rain .bulb{ background:var(--rain); box-shadow:0 0 14px var(--rain); }
+        .led.on-humid .bulb{ background:var(--rain); box-shadow:0 0 14px var(--rain); }
         .led.on-normal .bulb{ background:var(--sun); box-shadow:0 0 14px var(--sun); }
         .led.on-storm .bulb{ background:var(--storm); box-shadow:0 0 14px var(--storm); }
-        .led .tag{ font-family:'IBM Plex Mono',monospace; font-size:9.5px; color:var(--paper-dim); }
+        .led .tag{ font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--paper-dim); }
 
+        /* Control Buttons */
         .demo-row{
           display:grid;
           grid-template-columns: repeat(2, 1fr);
           gap:8px;
-          margin-top:14px;
         }
         button.btn-ctrl{
-          font-family:'IBM Plex Mono',monospace;
-          font-size:12px;
+          font-family:'Prompt', sans-serif;
+          font-size:11.5px;
+          font-weight: 400;
           border:1px solid var(--panel-border);
-          background:rgba(255,255,255,0.04);
+          background:rgba(255,255,255,0.03);
           color:var(--paper);
-          padding:10px;
-          border-radius:6px;
+          padding:10px 6px;
+          border-radius:8px;
           cursor:pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          line-height: 1.35;
+          text-align: center;
+          transition: all 0.15s ease;
         }
-        button.btn-ctrl:active{ background:rgba(255,255,255,0.15); }
+        button.btn-ctrl:active{ background:rgba(255,255,255,0.12); transform: scale(0.97); }
 
+        /* Telemetry Readout */
+        .readout-row{
+          display:grid;
+          grid-template-columns:repeat(3,1fr);
+          gap:8px;
+        }
+        .readout{
+          background: rgba(0,0,0,0.3);
+          border:1px solid var(--panel-border);
+          border-radius:10px;
+          padding:10px 4px;
+          text-align:center;
+        }
+        .readout .val{
+          font-family:'Chakra Petch', sans-serif;
+          font-size:20px;
+          font-weight:600;
+          color:#fff;
+        }
+        .readout .unit{ font-size:11px; color:var(--paper-dim); margin-left:2px; font-weight: 400; }
+        .readout .name{
+          font-family:'IBM Plex Mono',monospace;
+          font-size:9px;
+          color:var(--paper-dim);
+          text-transform:uppercase;
+          margin-top:3px;
+        }
+
+        /* Console Log */
         .console{
           font-family:'IBM Plex Mono',monospace;
-          font-size:11px;
-          line-height:1.6;
-          background:rgba(0,0,0,0.4);
+          font-size:10.5px;
+          line-height:1.5;
+          background:rgba(0,0,0,0.45);
           border:1px solid var(--panel-border);
-          border-radius:6px;
+          border-radius:8px;
           padding:10px;
-          height:150px;
+          height:130px;
           overflow-y:auto;
-          color:#a7f3d0;
-          margin-top:14px;
+          color:#86efac;
+          margin-top:10px;
         }
         .console .ln.err{ color:#f87171; }
         .console .ln.tx{ color:#38bdf8; }
@@ -266,23 +308,24 @@
 <body>
 <div class="rig">
 
+    <!-- Top Status Bar -->
     <div class="masthead">
-        <div>
-            <h1>Smart Weather Lamp — Digital Twin</h1>
-        </div>
+        <h1>Smart Weather Lamp</h1>
         <div class="conn-box">
             <span class="conn-dot" id="connDot"></span>
             <span class="conn-label" id="connLabel">DISCONNECTED</span>
         </div>
     </div>
 
+    <!-- Node IP Bar -->
     <div class="ip-bar">
-        <span style="font-size:12px; color:var(--paper-dim);">ESP32 IP:</span>
+        <label>ESP32 IP:</label>
         <input type="text" id="inputIp" value="192.168.1.6" placeholder="เช่น 192.168.1.6">
         <button id="btnSaveIp">บันทึก IP</button>
     </div>
 
     <div class="grid">
+        <!-- Scene Viewport -->
         <div class="card">
             <h2>Digital Twin Scene <span class="state-tag" id="stateTag">NORMAL</span></h2>
 
@@ -295,25 +338,26 @@
             </div>
 
             <div class="led-row">
-                <div class="led" id="ledRain"><div class="bulb"></div><span class="tag">RAIN</span></div>
+                <div class="led" id="ledHumid"><div class="bulb"></div><span class="tag">HUMID</span></div>
                 <div class="led" id="ledNormal"><div class="bulb"></div><span class="tag">NORMAL</span></div>
                 <div class="led" id="ledStorm"><div class="bulb"></div><span class="tag">SUNNY</span></div>
             </div>
 
             <div class="demo-row">
-                <button class="btn-ctrl" data-demo="RAIN">🌧️ จำลอง: RAIN</button>
-                <button class="btn-ctrl" data-demo="NORMAL">☀️ จำลอง: NORMAL</button>
-                <button class="btn-ctrl" data-demo="SUNNY">🔥 จำลอง: SUNNY</button>
-                <button class="btn-ctrl" data-demo="AUTO" style="border-color:#10b981; color:#34d399;">🔄 โหมดเซนเซอร์ (AUTO)</button>
+                <button class="btn-ctrl" data-demo="HUMID">💧 ชื้นสูง / อากาศเย็น<br><span style="font-size:9.5px; color:var(--paper-dim); font-family:'IBM Plex Mono';">(HUMID)</span></button>
+                <button class="btn-ctrl" data-demo="NORMAL">☀️ ชื้นปกติ / ปกติ<br><span style="font-size:9.5px; color:var(--paper-dim); font-family:'IBM Plex Mono';">(NORMAL)</span></button>
+                <button class="btn-ctrl" data-demo="SUNNY">🔥 ชื้นน้อย / ร้อนมาก<br><span style="font-size:9.5px; color:var(--paper-dim); font-family:'IBM Plex Mono';">(SUNNY)</span></button>
+                <button class="btn-ctrl" data-demo="AUTO" style="border-color: rgba(16, 185, 129, 0.4); color:#34d399; background: rgba(16, 185, 129, 0.05);">🔄 โหมดเซนเซอร์<br><span style="font-size:9.5px; color:#10b981; font-family:'IBM Plex Mono';">(AUTO)</span></button>
             </div>
         </div>
 
+        <!-- Live Telemetry Viewport -->
         <div class="card">
             <h2>Live Telemetry (ค่าจริงจาก ESP32)</h2>
             <div class="readout-row">
                 <div class="readout">
                     <div class="val"><span id="valTemp">--</span><span class="unit">°C</span></div>
-                    <div class="name">Temp (DHT)</div>
+                    <div class="name">Temp (DHT22)</div>
                 </div>
                 <div class="readout">
                     <div class="val"><span id="valHum">--</span><span class="unit">%</span></div>
@@ -325,7 +369,7 @@
                 </div>
             </div>
 
-            <h2 style="margin-top:16px;">System Log</h2>
+            <h2 style="margin-top:14px;">System Log</h2>
             <div class="console" id="console"></div>
         </div>
     </div>
@@ -333,14 +377,14 @@
 
 <script>
     (function(){
-      // กำหนดค่าเริ่มต้นเป็น IP ปัจจุบันของ ESP32
       const DEFAULT_IP = "192.168.1.6";
       let ESP32_BASE_URL = "http://" + (localStorage.getItem('ESP32_IP') || DEFAULT_IP);
 
       const STATES = {
-        RAIN:   { label:'ฝนตกฟ้าครึ้ม', caption:'RAIN · High Humidity Detected', color:'--rain', glow:'--rain-glow', led:'ledRain', class:'on-rain' },
-        NORMAL: { label:'แดดร่มปกติ', caption:'NORMAL · Optimal Ambient Light', color:'--sun', glow:'--sun-glow', led:'ledNormal', class:'on-normal' },
-        SUNNY:  { label:'แดดแรงจัด / ร้อนสูง', caption:'SUNNY · Intense Radiant Flux', color:'--storm', glow:'--storm-glow', led:'ledStorm', class:'on-storm' }
+        HUMID:  { label:'ความชื้นสูง / อากาศเย็น', caption:'HUMID · High Relative Humidity', color:'--rain', glow:'--rain-glow', led:'ledHumid', class:'on-humid' },
+        RAIN:   { label:'ความชื้นสูง / อากาศเย็น', caption:'HUMID · High Relative Humidity', color:'--rain', glow:'--rain-glow', led:'ledHumid', class:'on-humid' },
+        NORMAL: { label:'ความชื้นปกติ สภาพปกติ', caption:'NORMAL · Optimal Ambient Comfort', color:'--sun', glow:'--sun-glow', led:'ledNormal', class:'on-normal' },
+        SUNNY:  { label:'ความชื้นน้อย สภาพร้อนมาก', caption:'SUNNY · Low Humidity / High Temp', color:'--storm', glow:'--storm-glow', led:'ledStorm', class:'on-storm' }
       };
       const root = document.documentElement.style;
 
@@ -355,13 +399,11 @@
       const valTemp = document.getElementById('valTemp');
       const valHum = document.getElementById('valHum');
       const valLight = document.getElementById('valLight');
-      const leds = { ledRain: document.getElementById('ledRain'), ledNormal: document.getElementById('ledNormal'), ledStorm: document.getElementById('ledStorm') };
+      const leds = { ledHumid: document.getElementById('ledHumid'), ledNormal: document.getElementById('ledNormal'), ledStorm: document.getElementById('ledStorm') };
 
       let activeWeather = '';
 
-      // อัปเดตช่องข้อความด้วย IP จริง
       inputIp.value = localStorage.getItem('ESP32_IP') || DEFAULT_IP;
-
       btnSaveIp.addEventListener('click', ()=>{
         const val = inputIp.value.trim().replace('http://','').replace('/','');
         localStorage.setItem('ESP32_IP', val);
@@ -380,7 +422,8 @@
       }
 
       function applyState(name, reading){
-        const s = STATES[name];
+        const displayTag = (name === 'RAIN') ? 'HUMID' : name;
+        const s = STATES[name] || STATES[displayTag];
         if(!s) return;
 
         if(reading){
@@ -389,44 +432,43 @@
           valLight.textContent = Math.round(reading.light);
         }
 
-        if(activeWeather !== name){
-          activeWeather = name;
+        if(activeWeather !== displayTag){
+          activeWeather = displayTag;
           root.setProperty('--state', 'var(' + s.color + ')');
           root.setProperty('--state-glow', 'var(' + s.glow + ')');
           stateLabel.textContent = s.label;
           stateCaption.textContent = s.caption;
-          stateTag.textContent = name;
+          stateTag.textContent = displayTag;
 
-          Object.values(leds).forEach(el => el.classList.remove('on-rain','on-normal','on-storm'));
+          Object.values(leds).forEach(el => el.classList.remove('on-humid','on-normal','on-storm'));
           leds[s.led].classList.add(s.class);
 
-          log('[SYNC 📲] ซิงค์สภาพอากาศเป็น <b>' + name + '</b>');
-          initSceneParticles(name);
+          log('[SYNC 📲] ซิงค์สภาพอากาศเป็น <b>' + displayTag + '</b>');
+          initSceneParticles(displayTag);
         }
       }
 
-      // ส่งคำสั่งเปลี่ยนโหมดไปยังบอร์ด ESP32
       async function sendCommand(mode) {
         try {
-          log('[TX] กำลังสั่งบอร์ด: <b>' + mode + '</b>', 'tx');
-          const res = await fetch(ESP32_BASE_URL + '/api/set?mode=' + mode, { cache: "no-store" });
+          const actualMode = (mode === 'HUMID') ? 'RAIN' : mode;
+          log('[TX] สั่งบอร์ด: <b>' + mode + '</b>', 'tx');
+          const res = await fetch(ESP32_BASE_URL + '/api/set?mode=' + actualMode, { cache: "no-store" });
           if(res.ok){
             log('[RX] ESP32 ตอบรับคำสั่ง ' + mode);
             fetchTelemetry();
           }
         } catch(err) {
-          log('ส่งคำสั่งไม่สำเร็จ ตรวจสอบ IP หรือการเชื่อมต่อ: ' + err.message, 'err');
+          log('ส่งคำสั่งไม่สำเร็จ ตรวจสอบ IP: ' + err.message, 'err');
         }
       }
 
-      // ดึงค่า Telemetry จริงจาก ESP32
       async function fetchTelemetry() {
         try {
           const res = await fetch(ESP32_BASE_URL + '/api/telemetry', { cache: "no-store" });
           if (res.ok) {
             const data = await res.json();
             connDot.classList.add('live');
-            connLabel.textContent = 'CONNECTED (' + inputIp.value.trim() + ')';
+            connLabel.textContent = 'CONNECTED';
             applyState(data.state, data);
           } else {
             throw new Error('HTTP ' + res.status);
@@ -446,91 +488,216 @@
       setInterval(fetchTelemetry, 1500);
       fetchTelemetry();
 
-      // --- Dynamic Particle Background ---
+      // ==========================================
+      // 🌟 ADVANCED DYNAMIC PARTICLES ENGINE
+      // ==========================================
       const canvas = document.getElementById('sceneCanvas');
       const ctx = canvas.getContext('2d');
       let w = 0, h = 0;
-      let rainDrops = [], sunDust = [], fireFlames = [];
+      let dpr = window.devicePixelRatio || 1;
+
+      let humidParticles = [];
+      let sunDust = [];
+      let fireFlames = [];
+      let fireSparks = [];
 
       function resizeCanvas(){
-        w = canvas.parentElement.clientWidth;
-        h = canvas.parentElement.clientHeight;
-        canvas.width = w;
-        canvas.height = h;
+        const rect = canvas.parentElement.getBoundingClientRect();
+        w = rect.width;
+        h = rect.height;
+        dpr = window.devicePixelRatio || 1;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       }
-      window.addEventListener('resize', resizeCanvas);
+      window.addEventListener('resize', ()=>{ resizeCanvas(); initSceneParticles(activeWeather); });
       resizeCanvas();
 
       function initSceneParticles(mode){
-        if(mode === 'RAIN'){
-          rainDrops = Array.from({length: 80}, () => ({
-            x: Math.random() * w, y: Math.random() * h,
-            len: 12 + Math.random() * 15, speed: 8 + Math.random() * 6
+        if(mode === 'HUMID' || mode === 'RAIN'){
+          humidParticles = Array.from({length: 50}, () => ({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            radius: 1.2 + Math.random() * 3,
+            speedY: -0.3 - Math.random() * 0.5,
+            speedX: (Math.random() - 0.5) * 0.4,
+            alpha: 0.2 + Math.random() * 0.6,
+            pulse: Math.random() * Math.PI
           }));
         } else if(mode === 'NORMAL'){
-          sunDust = Array.from({length: 30}, () => ({
-            x: Math.random() * w, y: Math.random() * h,
-            size: 1 + Math.random() * 2, vx: (Math.random()-0.5)*0.3, vy: -0.2 - Math.random()*0.3
+          sunDust = Array.from({length: 35}, () => ({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            size: 1 + Math.random() * 2,
+            vx: (Math.random() - 0.5) * 0.3,
+            vy: -0.2 - Math.random() * 0.4,
+            alpha: 0.2 + Math.random() * 0.6
           }));
         } else if(mode === 'SUNNY'){
           fireFlames = [];
+          fireSparks = [];
         }
       }
 
-      function renderScene(){
+      function renderScene(now){
         ctx.clearRect(0, 0, w, h);
 
-        if(activeWeather === 'RAIN'){
-          ctx.fillStyle = '#060d17';
-          ctx.fillRect(0,0,w,h);
-          ctx.strokeStyle = 'rgba(125,211,252,0.6)';
-          ctx.lineWidth = 1.5;
-          rainDrops.forEach(d => {
+        if(activeWeather === 'HUMID' || activeWeather === 'RAIN'){
+          const bg = ctx.createLinearGradient(0, 0, 0, h);
+          bg.addColorStop(0, '#0c1a29');
+          bg.addColorStop(1, '#050c14');
+          ctx.fillStyle = bg;
+          ctx.fillRect(0, 0, w, h);
+
+          const mist = ctx.createRadialGradient(w/2, 65, 10, w/2, 65, w * 0.5);
+          mist.addColorStop(0, 'rgba(56, 189, 248, 0.18)');
+          mist.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = mist;
+          ctx.fillRect(0, 0, w, h);
+
+          humidParticles.forEach(d => {
+            d.pulse += 0.03;
+            const currentAlpha = d.alpha * (0.6 + Math.sin(d.pulse) * 0.4);
+
+            ctx.fillStyle = `rgba(186, 230, 253, ${currentAlpha})`;
             ctx.beginPath();
-            ctx.moveTo(d.x, d.y);
-            ctx.lineTo(d.x - 1, d.y + d.len);
-            ctx.stroke();
-            d.y += d.speed;
-            if(d.y > h){ d.y = -10; d.x = Math.random() * w; }
-          });
-        } else if(activeWeather === 'NORMAL'){
-          ctx.fillStyle = '#0e1a27';
-          ctx.fillRect(0,0,w,h);
-          ctx.fillStyle = '#fbbf24';
-          ctx.beginPath();
-          ctx.arc(w/2, 60, 22, 0, Math.PI*2);
-          ctx.fill();
-          sunDust.forEach(d => {
-            ctx.fillStyle = 'rgba(254,240,138,0.5)';
-            ctx.beginPath();
-            ctx.arc(d.x, d.y, d.size, 0, Math.PI*2);
+            ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2);
             ctx.fill();
-            d.x += d.vx; d.y += d.vy;
-            if(d.y < 0){ d.y = h; d.x = Math.random()*w; }
+
+            d.y += d.speedY;
+            d.x += d.speedX + Math.sin(d.pulse * 0.5) * 0.2;
+
+            if(d.y < -10){
+              d.y = h + 10;
+              d.x = Math.random() * w;
+            }
           });
+
+        } else if(activeWeather === 'NORMAL'){
+          const bg = ctx.createLinearGradient(0, 0, 0, h);
+          bg.addColorStop(0, '#192837');
+          bg.addColorStop(1, '#0d161f');
+          ctx.fillStyle = bg;
+          ctx.fillRect(0, 0, w, h);
+
+          const time = now * 0.001;
+          const sunX = w / 2, sunY = 55;
+
+          const pulse = Math.sin(time * 2) * 6;
+          const aura = ctx.createRadialGradient(sunX, sunY, 6, sunX, sunY, 65 + pulse);
+          aura.addColorStop(0, 'rgba(251, 191, 36, 0.4)');
+          aura.addColorStop(0.5, 'rgba(251, 146, 60, 0.12)');
+          aura.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = aura;
+          ctx.beginPath();
+          ctx.arc(sunX, sunY, 65 + pulse, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.save();
+          ctx.translate(sunX, sunY);
+          ctx.rotate(time * 0.25);
+          ctx.strokeStyle = 'rgba(253, 224, 71, 0.35)';
+          ctx.lineWidth = 2;
+          for(let i = 0; i < 12; i++){
+            ctx.rotate((Math.PI * 2) / 12);
+            ctx.beginPath();
+            ctx.moveTo(22, 0);
+            ctx.lineTo(34 + Math.sin(time * 4 + i) * 4, 0);
+            ctx.stroke();
+          }
+          ctx.restore();
+
+          ctx.fillStyle = '#fde047';
+          ctx.shadowColor = '#f59e0b';
+          ctx.shadowBlur = 14;
+          ctx.beginPath();
+          ctx.arc(sunX, sunY, 18, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          sunDust.forEach(d => {
+            ctx.fillStyle = `rgba(254, 240, 138, ${d.alpha})`;
+            ctx.beginPath();
+            ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+            ctx.fill();
+            d.x += d.vx;
+            d.y += d.vy;
+            if(d.y < -10){ d.y = h + 10; d.x = Math.random() * w; }
+          });
+
         } else if(activeWeather === 'SUNNY'){
-          ctx.fillStyle = '#220804';
-          ctx.fillRect(0,0,w,h);
-          for(let k=0; k<2; k++){
+          const bg = ctx.createLinearGradient(0, 0, 0, h);
+          bg.addColorStop(0, '#2b0c05');
+          bg.addColorStop(1, '#0c0302');
+          ctx.fillStyle = bg;
+          ctx.fillRect(0, 0, w, h);
+
+          const time = now * 0.001;
+          const flameX = w / 2, flameY = 75;
+
+          for(let k = 0; k < 2; k++){
             fireFlames.push({
-              x: w/2 + (Math.random()-0.5)*40, y: 100,
-              vx: (Math.random()-0.5)*1.2, vy: -2 - Math.random()*2,
-              size: 14 + Math.random()*12, life: 1.0
+              x: flameX + (Math.random() - 0.5) * 25,
+              y: flameY,
+              vx: (Math.random() - 0.5) * 1.2,
+              vy: -1.8 - Math.random() * 2.8,
+              size: 14 + Math.random() * 12,
+              life: 1.0,
+              decay: 0.035 + Math.random() * 0.03
             });
           }
-          for(let i=fireFlames.length-1; i>=0; i--){
-            const p = fireFlames[i];
-            ctx.fillStyle = `rgba(249,115,22,${p.life * 0.7})`;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
-            ctx.fill();
-            p.x += p.vx; p.y += p.vy;
-            p.life -= 0.04;
-            if(p.life <= 0) fireFlames.splice(i, 1);
+
+          if(Math.random() < 0.35){
+            fireSparks.push({
+              x: flameX + (Math.random() - 0.5) * 35,
+              y: flameY - 8,
+              vx: (Math.random() - 0.5) * 2.5,
+              vy: -2.5 - Math.random() * 3,
+              size: 1 + Math.random() * 2,
+              life: 1.0,
+              decay: 0.025 + Math.random() * 0.02
+            });
           }
+
+          ctx.globalCompositeOperation = 'lighter';
+          for(let i = fireFlames.length - 1; i >= 0; i--){
+            const p = fireFlames[i];
+            const rad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+            rad.addColorStop(0, `rgba(254, 240, 138, ${p.life * 0.9})`);
+            rad.addColorStop(0.3, `rgba(249, 115, 22, ${p.life * 0.7})`);
+            rad.addColorStop(0.8, `rgba(220, 38, 38, ${p.life * 0.3})`);
+            rad.addColorStop(1, 'rgba(0,0,0,0)');
+
+            ctx.fillStyle = rad;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+
+            p.x += p.vx;
+            p.y += p.vy;
+            p.size = Math.max(0, p.size - 0.35);
+            p.life -= p.decay;
+            if(p.life <= 0 || p.size <= 0) fireFlames.splice(i, 1);
+          }
+
+          for(let i = fireSparks.length - 1; i >= 0; i--){
+            const s = fireSparks[i];
+            ctx.fillStyle = `rgba(254, 215, 170, ${s.life})`;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+            ctx.fill();
+
+            s.x += s.vx + Math.sin(time * 5 + i) * 0.4;
+            s.y += s.vy;
+            s.life -= s.decay;
+            if(s.life <= 0) fireSparks.splice(i, 1);
+          }
+          ctx.globalCompositeOperation = 'source-over';
         }
+
         requestAnimationFrame(renderScene);
       }
+
       applyState('NORMAL', null);
       requestAnimationFrame(renderScene);
     })();

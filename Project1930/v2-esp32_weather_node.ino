@@ -1,87 +1,109 @@
+/*
+  Smart Weather Lamp — Digital Twin (Hardware Node)
+  DGT01 1930 โครงงานเครือข่ายไร้สายและอินเทอร์เน็ตของสรรพสิ่ง
+  
+  การต่อขาที่ใช้งานจริง:
+  - DHT22 Data : GPIO14
+  - LDR Analog : GPIO34
+  - LED น้ำเงิน : GPIO16 (RAIN)
+  - LED เหลือง : GPIO18 (NORMAL)
+  - LED แดง    : GPIO5  (SUNNY)
+  - LCD SDA    : GPIO21
+  - LCD SCL    : GPIO22
+*/
+
+#include <WiFi.h>
+#include <WebServer.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <DHT.h>
 
-// ---------- ปรับตามการต่อสายจริง ----------
-#define DHTPIN      4      // DHT22 data pin (ESP32: GPIO4 / NodeMCU: D2)
-#define DHTTYPE     DHT22
-#define LDR_PIN     34     // ESP32 ADC pin (ใช้ A0 บน NodeMCU)
+// ---------- 1. ตั้งค่า Wi-Fi Hotspot มือถือ ----------
+// ใส่ชื่อและรหัสผ่าน Hotspot ของโทรศัพท์มือถือ (ต้องเป็นความถี่ 2.4 GHz)
+const char* WIFI_SSID     = "MP.A1";
+const char* WIFI_PASSWORD = "600058944";
 
-#define LED_RAIN    16     // สีน้ำเงิน = ฝนตก
-#define LED_NORMAL  17     // สีส้ม/เหลือง = แดดปกติ
-#define LED_SUNNY   18     // สีแดง = แดดแรง
+// ---------- 2. กำหนดขา Pin และเซนเซอร์ ----------
+#define DHTPIN      14     // DHT DATA Pin (GPIO14)
+#define DHTTYPE     DHT22  // DHT22 (AM2302)
+#define LDR_PIN     34     // LDR ADC Pin (GPIO34)
 
-#define LCD_ADDR    0x27
+#define LED_BLUE    16     // LED น้ำเงิน (RAIN)
+#define LED_YELLOW  18     // LED เหลือง (NORMAL)
+#define LED_RED     5      // LED แดง (SUNNY)
+
 #define LCD_COLS    16
 #define LCD_ROWS    2
 
-// ---------- เกณฑ์การตัดสินสถานะ (ปรับตามค่าจริงที่วัดได้ในพื้นที่) ----------
-const float HUMIDITY_RAIN_THRESHOLD = 75.0;   // %RH สูงกว่านี้ถือว่ามีโอกาสฝนตก
-const int   LIGHT_SUNNY_THRESHOLD   = 3000;   // ค่า ADC (0-4095 บน ESP32) สูงกว่านี้ถือว่าแดดแรง
-const int   LIGHT_NORMAL_THRESHOLD  = 600;    // ต่ำกว่านี้ถือว่ามืด/ไม่มีแดด
+// ตั้งเป็น true หากวงจร LDR ต่อสลับฝั่ง (เช่น ตอนมืดค่าพุ่ง 4095 ตอนสว่างค่าลด)
+const bool INVERT_LDR = false; 
+
+const float HUMIDITY_RAIN_THRESHOLD = 75.0;
+const int   LIGHT_SUNNY_THRESHOLD   = 3000;
 
 DHT dht(DHTPIN, DHTTYPE);
-LiquidCrystal_I2C lcd(LCD_ADDR, LCD_COLS, LCD_ROWS);
+LiquidCrystal_I2C* lcd = nullptr;
+WebServer server(80);
 
-String lastState = "";
+String overrideState = "";
+String currentState  = "NORMAL";
 unsigned long lastRead = 0;
-const unsigned long READ_INTERVAL = 2000; // อ่านค่าทุก 2 วินาที
+const unsigned long READ_INTERVAL = 2000;
 
-void setup() {
-  Serial.begin(115200);
-  dht.begin();
+float currentTemp = 28.0;
+float currentHum  = 60.0;
+int   currentLight = 1500;
 
-  pinMode(LED_RAIN, OUTPUT);
-  pinMode(LED_NORMAL, OUTPUT);
-  pinMode(LED_SUNNY, OUTPUT);
-  digitalWrite(LED_RAIN, LOW);
-  digitalWrite(LED_NORMAL, LOW);
-  digitalWrite(LED_SUNNY, LOW);
-
-  lcd.init();
-  lcd.backlight();
-  lcd.setCursor(0, 0);
-  lcd.print("Weather Twin");
-  lcd.setCursor(0, 1);
-  lcd.print("Booting...");
-  delay(1500);
-  lcd.clear();
+// ---------- ฟังก์ชันค้นหา I2C Address ของจอ LCD อัตโนมัติ ----------
+uint8_t detectLcdAddress() {
+  uint8_t addresses[] = {0x27, 0x3F, 0x20, 0x38};
+  for (uint8_t addr : addresses) {
+    Wire.beginTransmission(addr);
+    if (Wire.endTransmission() == 0) {
+      Serial.printf("[I2C] พบจอ LCD ที่ Address: 0x%02X\n", addr);
+      return addr;
+    }
+  }
+  Serial.println("[I2C] ไม่พบจออัตโนมัติ ใช้ค่าเริ่มต้น 0x27");
+  return 0x27;
 }
 
-void loop() {
-  if (millis() - lastRead < READ_INTERVAL) return;
-  lastRead = millis();
-
-  float humidity = dht.readHumidity();
-  float temp = dht.readTemperature();
-  int lightRaw = analogRead(LDR_PIN);
-
-  if (isnan(humidity) || isnan(temp)) {
-    Serial.println("ERR: DHT22 read failed");
-    lcd.setCursor(0, 0);
-    lcd.print("Sensor error!  ");
-    return;
-  }
-
-  String state = classifyWeather(humidity, lightRaw);
-  updateLeds(state);
-  updateLcd(temp, humidity, lightRaw, state);
-
-  // ส่งสถานะออกทาง Serial เฉพาะตอนเปลี่ยนแปลง เพื่อลดสัญญาณรบกวนบนหน้าเว็บ
-  if (state != lastState) {
-    Serial.println(state);
-    lastState = state;
-  }
-
-  // ส่งค่าดิบไว้ debug เพิ่มเติม (หน้าเว็บจะข้ามบรรทัดที่ไม่ตรงคำสั่ง)
-  Serial.print("DEBUG T=");
-  Serial.print(temp);
-  Serial.print("C H=");
-  Serial.print(humidity);
-  Serial.print("% L=");
-  Serial.println(lightRaw);
+// ---------- ฟังก์ชันควบคุมไฟ LED ----------
+void updateLeds(const String &state) {
+  digitalWrite(LED_BLUE,   state == "RAIN"   ? HIGH : LOW);
+  digitalWrite(LED_YELLOW, state == "NORMAL" ? HIGH : LOW);
+  digitalWrite(LED_RED,    state == "SUNNY"  ? HIGH : LOW);
 }
 
+// ---------- ฟังก์ชันแสดงผลบนจอ LCD ----------
+void updateLcd(float temp, float humidity, const String &state) {
+  if (!lcd) return;
+  char line1[17];
+  char line2[17];
+
+  snprintf(line1, sizeof(line1), "T:%.1fC H:%.0f%%    ", temp, humidity);
+  snprintf(line2, sizeof(line2), "State: %-9s", state.c_str());
+
+  lcd->setCursor(0, 0);
+  lcd->print(line1);
+  lcd->setCursor(0, 1);
+  lcd->print(line2);
+}
+
+// ---------- ส่งข้อมูล JSON ออกทาง Web Serial ----------
+void sendJson(float temp, float humidity, int lightRaw, const String &state) {
+  Serial.print("{\"temp\":");
+  Serial.print(temp, 1);
+  Serial.print(",\"humidity\":");
+  Serial.print(humidity, 1);
+  Serial.print(",\"light\":");
+  Serial.print(lightRaw);
+  Serial.print(",\"state\":\"");
+  Serial.print(state);
+  Serial.println("\"}");
+}
+
+// ---------- วิเคราะห์สภาพอากาศ ----------
 String classifyWeather(float humidity, int lightRaw) {
   if (humidity >= HUMIDITY_RAIN_THRESHOLD) {
     return "RAIN";
@@ -92,22 +114,165 @@ String classifyWeather(float humidity, int lightRaw) {
   }
 }
 
-void updateLeds(const String &state) {
-  digitalWrite(LED_RAIN,   state == "RAIN"   ? HIGH : LOW);
-  digitalWrite(LED_NORMAL, state == "NORMAL" ? HIGH : LOW);
-  digitalWrite(LED_SUNNY,  state == "SUNNY"  ? HIGH : LOW);
+// ---------- REST API Handlers (สำหรับ Mobile App & Web App) ----------
+void handleApiTelemetry() {
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  String json = "{\"temp\":" + String(currentTemp, 1) +
+                ",\"humidity\":" + String(currentHum, 1) +
+                ",\"light\":" + String(currentLight) +
+                ",\"state\":\"" + currentState + "\"}";
+  server.send(200, "application/json", json);
 }
 
-void updateLcd(float temp, float humidity, int lightRaw, const String &state) {
-  lcd.setCursor(0, 0);
-  lcd.print("T:");
-  lcd.print(temp, 1);
-  lcd.print("C H:");
-  lcd.print(humidity, 0);
-  lcd.print("%   ");
+void handleApiSetState() {
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  if (server.hasArg("mode")) {
+    String mode = server.arg("mode");
+    mode.toUpperCase();
+    if (mode == "RAIN" || mode == "NORMAL" || mode == "SUNNY") {
+      overrideState = mode;
+      currentState  = mode;
+      updateLeds(overrideState);
+      updateLcd(currentTemp, currentHum, currentState);
+      server.send(200, "text/plain", "OK: " + mode);
+      Serial.println("[WIFI 📱 สั่งงาน] สลับสถานะเป็น " + mode);
+      return;
+    } else if (mode == "AUTO" || mode == "RESET") {
+      overrideState = "";
+      currentState = classifyWeather(currentHum, currentLight);
+      updateLeds(currentState);
+      updateLcd(currentTemp, currentHum, currentState);
+      server.send(200, "text/plain", "OK: AUTO");
+      Serial.println("[WIFI 📱 สั่งงาน] คืนค่าสู่โหมด AUTO");
+      return;
+    }
+  }
+  server.send(400, "text/plain", "Invalid Parameter");
+}
 
-  lcd.setCursor(0, 1);
-  lcd.print("State: ");
-  lcd.print(state);
-  lcd.print("    ");
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  dht.begin();
+  analogReadResolution(12);
+
+  pinMode(LED_BLUE, OUTPUT);
+  pinMode(LED_YELLOW, OUTPUT);
+  pinMode(LED_RED, OUTPUT);
+
+  digitalWrite(LED_BLUE, LOW);
+  digitalWrite(LED_YELLOW, LOW);
+  digitalWrite(LED_RED, LOW);
+
+  // 1. กำหนดค่า I2C และจอ LCD
+  Wire.begin(21, 22);
+  Wire.setClock(100000);
+  delay(200);
+
+  uint8_t lcdAddr = detectLcdAddress();
+  lcd = new LiquidCrystal_I2C(lcdAddr, LCD_COLS, LCD_ROWS);
+
+  lcd->init();
+  delay(50);
+  lcd->backlight();
+  delay(50);
+  lcd->clear();
+  delay(100);
+
+  lcd->setCursor(0, 0);
+  lcd->print("Weather Twin    ");
+  lcd->setCursor(0, 1);
+  lcd->print("Connecting Wi-Fi");
+
+  // 2. เชื่อมต่อ Hotspot มือถือ
+  Serial.print("\n[WIFI] กำลังเชื่อมต่อ Hotspot: ");
+  Serial.println(WIFI_SSID);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  int retry = 0;
+  while (WiFi.status() != WL_CONNECTED && retry < 20) {
+    delay(500);
+    Serial.print(".");
+    retry++;
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\n[WIFI] เชื่อมต่อสำเร็จ!");
+    Serial.print("[WIFI] IP Address ของบอร์ด: http://");
+    Serial.println(WiFi.localIP());
+
+    lcd->setCursor(0, 0);
+    lcd->print("IP:             ");
+    lcd->setCursor(3, 0);
+    lcd->print(WiFi.localIP());
+    lcd->setCursor(0, 1);
+    lcd->print("Web Server OK!  ");
+  } else {
+    Serial.println("\n[WIFI] เชื่อมต่อไม่สำเร็จ รันโหมดออฟไลน์/Serial แทน");
+    lcd->setCursor(0, 1);
+    lcd->print("Wi-Fi Fail/Local");
+  }
+  delay(2500);
+  lcd->clear();
+
+  // 3. เริ่มต้น REST API Server
+  server.on("/api/telemetry", HTTP_GET, handleApiTelemetry);
+  server.on("/api/set", HTTP_GET, handleApiSetState);
+  server.begin();
+  Serial.println("[SERVER] HTTP Web Server เริ่มทำงานบนพอร์ต 80");
+}
+
+void loop() {
+  // รองรับคำสั่งจาก Web App / โทรศัพท์ผ่าน Wi-Fi
+  server.handleClient();
+
+  // 📥 1. รองรับคำสั่งจาก Web Serial Dashboard (สาย USB)
+  if (Serial.available() > 0) {
+    String input = Serial.readStringUntil('\n');
+    input.trim();
+    if (input == "RAIN" || input == "NORMAL" || input == "SUNNY") {
+      overrideState = input;
+      currentState = overrideState;
+      updateLeds(overrideState);
+      updateLcd(currentTemp, currentHum, currentState);
+    } else if (input == "AUTO" || input == "RESET") {
+      overrideState = "";
+      currentState = classifyWeather(currentHum, currentLight);
+      updateLeds(currentState);
+      updateLcd(currentTemp, currentHum, currentState);
+    }
+  }
+
+  // 📤 2. อ่านค่าเซนเซอร์ทุก 2 วินาที
+  if (millis() - lastRead < READ_INTERVAL) return;
+  lastRead = millis();
+
+  float humidity = dht.readHumidity();
+  float temp = dht.readTemperature();
+  int lightRaw = analogRead(LDR_PIN);
+
+  if (INVERT_LDR) {
+    lightRaw = 4095 - lightRaw;
+  }
+
+  if (!isnan(humidity) && !isnan(temp)) {
+    currentTemp  = temp;
+    currentHum   = humidity;
+    currentLight = lightRaw;
+  } else {
+    Serial.println("{\"error\":\"DHT sensor retry\"}");
+  }
+
+  if (overrideState != "") {
+    currentState = overrideState;
+  } else {
+    currentState = classifyWeather(currentHum, currentLight);
+  }
+
+  updateLeds(currentState);
+  updateLcd(currentTemp, currentHum, currentState);
+  sendJson(currentTemp, currentHum, currentLight, currentState);
 }
