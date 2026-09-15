@@ -20,8 +20,8 @@
 
 // ---------- 1. ตั้งค่า Wi-Fi Hotspot มือถือ ----------
 // ใส่ชื่อและรหัสผ่าน Hotspot ของโทรศัพท์มือถือ (ต้องเป็นความถี่ 2.4 GHz)
-const char* WIFI_SSID     = "MP.A1";
-const char* WIFI_PASSWORD = "600058944";
+const char* WIFI_SSID     = "Z Flip7 ของ Poommin";
+const char* WIFI_PASSWORD = "0838070149kp";
 
 // ---------- 2. กำหนดขา Pin และเซนเซอร์ ----------
 #define DHTPIN      14     // DHT DATA Pin (GPIO14)
