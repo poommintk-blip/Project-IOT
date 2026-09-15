@@ -1,4 +1,4 @@
-# Smart Weather Lamp — Digital Twin IoT Project
+# Smart Weather Lamp — Digital Twin (IoT Project)
 
 ระบบโคมไฟตรวจวัดสภาพแวดล้อมอัจฉริยะและแบบจำลองสภาพอากาศดิจิทัลทวิน (Digital Twin) แบบเรียลไทม์ รองรับการมอนิเตอร์และสั่งการทำงาน 2 โหมด: ควบคุมผ่านสาย USB บนเครื่องคอมพิวเตอร์ด้วย **Web Serial API** และควบคุมแบบไร้สายผ่าน Wi-Fi Hotspot ด้วย **Android Web App (WebView)**
 
